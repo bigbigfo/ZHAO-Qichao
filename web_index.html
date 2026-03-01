@@ -1,0 +1,2415 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Paris Film Shooting — Web App</title>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 16px;
+      color: #111;
+      background: #fff;
+    }
+    h1 { margin: 0 0 12px; font-size: 20px; }
+
+    .panel {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid #e7e7e7;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
+      box-shadow: 0 6px 22px rgba(0,0,0,0.05);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    input, select, button, textarea {
+      padding: 9px 10px;
+      border: 1px solid #d9d9d9;
+      border-radius: 10px;
+      outline: none;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    textarea { resize: vertical; min-height: 40px; }
+    input:focus, select:focus, textarea:focus {
+      border-color: #b9d6ff;
+      box-shadow: 0 0 0 3px rgba(41, 123, 255, 0.15);
+    }
+    button {
+      cursor: pointer;
+      border-color: #b9d6ff;
+      background: #e9f2ff;
+      font-weight: 650;
+    }
+    button:hover { filter: brightness(0.98); }
+    .muted { color: #666; font-size: 12px; }
+    .error { color: #b00020; white-space: pre-wrap; }
+    .small { font-size: 12px; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    #mapWrap { position: relative; }
+    #map {
+      width: 100%;
+      height: 560px;
+      border: 1px solid #eee;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 8px 26px rgba(0,0,0,0.06);
+    }
+
+    /* D3 containers */
+    #plot {
+      width: 100%;
+      height: 420px;
+      border: 1px solid #eee;
+      border-radius: 14px;
+      background: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #stats { width: 100%; }
+    #trend, #typebar, #pie, #postalbar {
+      width: 100%;
+      height: 360px;
+      border: 1px solid #eee;
+      border-radius: 14px;
+      background: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #mapDebugBadge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 9999;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid #e7e7e7;
+      border-radius: 12px;
+      padding: 10px 12px;
+      width: min(560px, 92%);
+      font-size: 12px;
+      line-height: 1.35;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+      pointer-events: none;
+      backdrop-filter: blur(6px);
+    }
+    #mapDebugBadge b { color: #b00020; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      overflow: hidden;
+      border-radius: 14px;
+    }
+    th, td {
+      border: 1px solid #f0f0f0;
+      padding: 9px;
+      vertical-align: top;
+    }
+    th { background: #fafafa; text-align: left; }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border: 1px solid #e0e0e0;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #fafafa;
+    }
+    details {
+      margin-top: 6px;
+      border: 1px dashed #ddd;
+      border-radius: 12px;
+      padding: 8px 10px;
+      background: #fff;
+    }
+    details summary { cursor: pointer; font-weight: 650; }
+    code { background: #f7f7f7; padding: 2px 6px; border-radius: 7px; }
+
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .tabbtn {
+      padding: 7px 11px;
+      border: 1px solid #e0e0e0;
+      border-radius: 999px;
+      background: #fafafa;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .tabbtn.active {
+      background: #e9f2ff;
+      border-color: #b9d6ff;
+      font-weight: 650;
+    }
+    .hidden { display: none; }
+
+    .leaflet-popup-content-wrapper { border-radius: 14px; }
+    .leaflet-popup-content { margin: 10px 12px; }
+    .popup-title { font-weight: 750; font-size: 13px; }
+    .popup-meta { color: #555; font-size: 12px; margin-top: 3px; }
+    .popup-addr { color: #333; font-size: 12px; margin-top: 5px; }
+    .popup-foot { color: #777; font-size: 11px; margin-top: 6px; }
+
+    #tbl tbody tr { cursor: pointer; }
+    #tbl tbody tr:hover { background: #fbfdff; }
+    #tbl tbody tr.active { outline: 2px solid rgba(41, 123, 255, 0.25); background: #f5faff; }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid #eee;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+    }
+    .pager .left, .pager .right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .pager button {
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid #e0e0e0;
+      background: #fafafa;
+      font-weight: 700;
+    }
+    .pager button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .pager .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #e0e0e0;
+      background: #fafafa;
+      font-size: 12px;
+      color: #333;
+    }
+
+    .d3tip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(17,17,17,0.92);
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      max-width: 340px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .10s ease, transform .10s ease;
+      z-index: 9999;
+      white-space: pre-wrap;
+    }
+    .d3tip.show { opacity: 1; transform: translateY(0); }
+
+    /* Wikidata panel */
+    #wdPanel {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: min(420px, calc(100vw - 32px));
+      max-height: calc(100vh - 32px);
+      overflow: hidden;
+      z-index: 99999;
+      border: 1px solid rgba(231,231,231,0.9);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.14), 0 2px 10px rgba(0,0,0,0.06);
+      display: none;
+      transform: translateY(6px);
+      opacity: 0;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    #wdPanel.show { opacity: 1; transform: translateY(0); }
+    #wdPanel .wdScroll { max-height: calc(100vh - 32px); overflow: auto; padding: 12px 12px 14px; }
+
+    #wdPanelHeader {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 12px 10px;
+      margin: -12px -12px 10px;
+      background: linear-gradient(135deg, rgba(233,242,255,0.9), rgba(255,255,255,0.5));
+      border-bottom: 1px solid rgba(231,231,231,0.8);
+    }
+
+    #wdTitle { font-weight: 850; font-size: 16px; line-height: 1.25; margin: 0; letter-spacing: 0.2px; }
+    #wdMeta { margin-top: 4px; color: #667085; font-size: 12px; }
+    #wdClose {
+      border: 1px solid rgba(220,220,220,0.9);
+      border-radius: 12px;
+      padding: 7px 10px;
+      background: rgba(255,255,255,0.8);
+      cursor: pointer;
+      font-weight: 750;
+      line-height: 1;
+      transition: transform .12s ease, filter .12s ease;
+    }
+    #wdClose:hover { filter: brightness(0.98); transform: scale(1.03); }
+
+    .wdImg {
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid rgba(238,238,238,0.9);
+      display: none;
+      margin: 10px 0 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.10);
+    }
+    .wdDescBox {
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(240,240,240,0.9);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 8px 0 10px;
+    }
+    #wdDesc { color: #111; font-size: 13px; }
+    #wdLinks { margin: 8px 0 10px; }
+    #wdLinks .wdLinkBtn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(185,214,255,0.95);
+      background: rgba(233,242,255,0.9);
+      font-size: 12px;
+      font-weight: 750;
+      text-decoration: none;
+      color: #0b57d0;
+      margin-right: 8px;
+    }
+    #wdLinks .wdLinkBtn:hover { filter: brightness(0.98); }
+    #wdBody { padding-top: 6px; font-size: 13px; }
+    .wdRow {
+      margin: 10px 0;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(240,240,240,0.9);
+      background: rgba(255,255,255,0.75);
+    }
+    .wdLabel {
+      font-weight: 800;
+      font-size: 11px;
+      color: #667085;
+      margin-bottom: 6px;
+      letter-spacing: 0.25px;
+      text-transform: uppercase;
+    }
+    .wdValue { color: #111; font-size: 13px; line-height: 1.4; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(225,225,225,0.95);
+      background: rgba(250,250,250,0.9);
+      font-size: 12px;
+      margin-right: 6px;
+      margin-top: 4px;
+    }
+    .wdSkeleton {
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(240,240,240,0.6), rgba(220,220,220,0.7), rgba(240,240,240,0.6));
+      background-size: 200% 100%;
+      animation: wdShimmer 1.2s infinite linear;
+    }
+    @keyframes wdShimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .tw {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid #eee;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+    }
+    .tw-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .tw-badges { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .tw-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #e0e0e0;
+      background: #fafafa;
+      font-size: 12px;
+    }
+    .tw-sliders {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    .tw-sliders label {
+      font-size: 12px;
+      color: #444;
+    }
+    input[type="range"] { width: 100%; padding: 0; border: none; }
+    .tw-range-box { display:grid; grid-template-columns: 70px 1fr; gap:10px; align-items:center; }
+    .tw-range-box input[type="number"] { width: 100%; }
+  </style>
+</head>
+
+<body>
+  <h1>Paris Film Shooting — Web App</h1>
+
+  <div class="panel">
+    <div class="row">
+      <div>Fuseki SPARQL</div>
+      <input id="endpoint" type="text" />
+    </div>
+
+    <div class="row">
+      <div>Named graph</div>
+      <input id="graph" type="text" placeholder="ex: http://zqc/paris-shooting/graph" />
+    </div>
+
+    <div class="row">
+      <div>Fenêtre temporelle</div>
+      <div class="tw">
+        <div class="tw-top">
+          <div class="tw-badges">
+            <span class="tw-badge">Min: <b id="yMinLabel">—</b></span>
+            <span class="tw-badge">Max: <b id="yMaxLabel">—</b></span>
+            <span class="tw-badge">Mode: <b id="yModeLabel">All</b></span>
+          </div>
+          <div>
+            <select id="yearMode">
+              <option value="all" selected>All years</option>
+              <option value="range">Use range</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="tw-sliders">
+          <div class="tw-range-box">
+            <label for="yMin">Start</label>
+            <div style="display:grid;grid-template-columns:1fr;gap:6px;">
+              <input id="yMin" type="range" min="1900" max="2100" step="1" value="2000" />
+              <input id="yMinNum" type="number" min="1900" max="2100" step="1" value="2000" />
+            </div>
+          </div>
+
+          <div class="tw-range-box">
+            <label for="yMax">End</label>
+            <div style="display:grid;grid-template-columns:1fr;gap:6px;">
+              <input id="yMax" type="range" min="1900" max="2100" step="1" value="2020" />
+              <input id="yMaxNum" type="number" min="1900" max="2100" step="1" value="2020" />
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="row">
+      <div>Type (multi, optionnel)</div>
+      <textarea id="type" placeholder="ex: Série TV, Long métrage&#10;Astuce: séparé par virgule / point-virgule / retour à la ligne"></textarea>
+    </div>
+    <div class="row">
+      <div></div>
+    </div>
+
+    <div class="row">
+      <div>Recherche titre (optionnel)</div>
+      <input id="qTitle" type="text" placeholder="ex: Baron Noir, Family Business" />
+    </div>
+
+    <div class="row">
+      <div>Code postal (multi, optionnel)</div>
+      <textarea id="postal" placeholder="ex: 75003, 75004&#10;ou&#10;75003&#10;75004"></textarea>
+    </div>
+    <div class="row">
+      <div></div>
+    
+    </div>
+
+    <div class="row">
+      <div>Uniquement avec Wikidata</div>
+      <select id="onlyWd">
+        <option value="0" selected>Non</option>
+        <option value="1">Oui</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div>Affichage carte</div>
+      <select id="mapMode">
+        <option value="cluster" selected>Cluster (recommandé)</option>
+        <option value="heat">Heatmap (plus doux)</option>
+        <option value="plain">Points simples</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div>Taille des points</div>
+      <select id="dotSize">
+        <option value="6">Petit</option>
+        <option value="8" selected>Moyen</option>
+        <option value="10">Grand</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div>Limite (SPARQL)</div>
+      <select id="limit">
+        <option value="20">20</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div>Pagination (table)</div>
+      <select id="pageSize">
+        <option value="10" selected>10 / page</option>
+        <option value="20">20 / page</option>
+        <option value="50">50 / page</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div></div>
+      <button id="btnRun">Rechercher</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tabbtn active" data-tab="map">🗺️ Carte</div>
+      <div class="tabbtn" data-tab="plot">📈 Scatter (D3)</div>
+      <div class="tabbtn" data-tab="stats">📊 Stats (D3 + SPARQL AGG)</div>
+    </div>
+
+    <details>
+      <summary>Afficher la requête SPARQL</summary>
+      <pre id="debugQuery" class="small" style="white-space:pre-wrap;margin:8px 0 0;"></pre>
+    </details>
+
+    <div id="status" class="small"></div>
+    <div id="error" class="error"></div>
+  </div>
+
+  <div class="grid">
+    <div id="mapWrap">
+      <div id="map"></div>
+      <div id="mapDebugBadge"></div>
+    </div>
+
+    <div id="plot" class="hidden"></div>
+
+    <div id="stats" class="hidden">
+      <div id="trend"></div>
+      <div style="height:12px"></div>
+      <div id="typebar"></div>
+      <div style="height:12px"></div>
+      <div id="pie"></div>
+      <div style="height:12px"></div>
+      <div id="postalbar"></div>
+    </div>
+
+    <div>
+      <div class="pager" id="pagerTop">
+        <div class="left">
+          <button id="btnPrev" type="button">Prev</button>
+          <button id="btnNext" type="button">Next</button>
+          <span class="badge" id="pageInfo">Page 1 / 1</span>
+          <span class="badge" id="rowInfo">Rows 0–0 / 0</span>
+        </div>
+        <div class="right">
+          <button id="btnFirst" type="button">⏮ First</button>
+          <button id="btnLast" type="button">Last ⏭</button>
+        </div>
+      </div>
+
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>Titre</th>
+            <th>Année</th>
+            <th>Type</th>
+            <th>Réalisateur</th>
+            <th>Adresse</th>
+            <th>Code postal</th>
+            <th>LOD</th>
+            <th>Ressource</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="pager" id="pagerBottom" style="margin-top:10px;">
+        <div class="left">
+          <button id="btnPrev2" type="button">Prev</button>
+          <button id="btnNext2" type="button">Next</button>
+          <span class="badge" id="pageInfo2">Page 1 / 1</span>
+          <span class="badge" id="rowInfo2">Rows 0–0 / 0</span>
+        </div>
+        <div class="right">
+          <button id="btnFirst2" type="button">⏮ First</button>
+          <button id="btnLast2" type="button">Last ⏭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside id="wdPanel" aria-label="Wikidata details">
+    <div class="wdScroll">
+      <div id="wdPanelHeader">
+        <div>
+          <div id="wdTitle">Wikidata</div>
+          <div id="wdMeta"></div>
+        </div>
+        <button id="wdClose" type="button">✕</button>
+      </div>
+
+      <img id="wdImg" class="wdImg" alt="Wikidata image" />
+
+      <div class="wdDescBox">
+        <div class="wdLabel">Description</div>
+        <div id="wdDesc" class="wdValue">—</div>
+      </div>
+
+      <div id="wdLinks"></div>
+      <div id="wdBody"></div>
+    </div>
+  </aside>
+
+  <!-- markercluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- heat -->
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+  <script>
+    const FUSEKI_SPARQL_ENDPOINT_DEFAULT =
+      "http://localhost:3030/lieux-de-tournage-a-paris/query";
+    const FUSEKI_GRAPH_DEFAULT = "http://zqc/paris-shooting/graph";
+
+    const NS = {
+      base: "http://zqc/paris-shooting/",
+      rdfs: "http://www.w3.org/2000/01/rdf-schema#",
+      wd: "http://www.wikidata.org/entity/",
+      schema: "http://schema.org/",
+      wdt: "http://www.wikidata.org/prop/direct/",
+      xsd: "http://www.w3.org/2001/XMLSchema#"
+    };
+
+    const PARIS = { lat: 48.8566, lon: 2.3522 };
+
+    function setText(id, text) { document.getElementById(id).textContent = text; }
+
+    function escHtml(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function safeLiteral(s) { return String(s ?? "").replace(/["\\]/g, ""); }
+
+    function parseMultiValues(raw, maxItems = 20) {
+      const s = String(raw ?? "").trim();
+      if (!s) return [];
+      const parts = s
+        .split(/[,;\n\r]+/g)
+        .map(x => x.trim())
+        .filter(Boolean);
+
+      const out = [];
+      const seen = new Set();
+      for (const p of parts) {
+        const v = safeLiteral(p);
+        if (!v) continue;
+        const key = v.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(v);
+        if (out.length >= maxItems) break;
+      }
+      return out;
+    }
+
+    function parseLatLonParisAware(s) {
+      if (!s) return null;
+      const parts = String(s).split(",").map(x => x.trim());
+      if (parts.length !== 2) return null;
+
+      const a = Number(parts[0]);
+      const b = Number(parts[1]);
+      if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+
+      const inRange = (lat, lon) => (lat > 48.0 && lat < 49.2 && lon > 1.6 && lon < 3.6);
+
+      if (inRange(a, b)) return { lat: a, lon: b };
+      if (inRange(b, a)) return { lat: b, lon: a };
+      return null;
+    }
+
+    function buildDescribeLink(endpoint, resourceUri) {
+      const u = new URL(endpoint);
+      u.searchParams.set("query", `DESCRIBE <${resourceUri}>`);
+      return u.toString();
+    }
+
+    function isWdUri(uri) {
+      return typeof uri === "string" && (
+        uri.startsWith("http://www.wikidata.org/entity/") ||
+        uri.startsWith("https://www.wikidata.org/entity/")
+      );
+    }
+
+    function qidFromWdUri(uri) {
+      if (!isWdUri(uri)) return "";
+      return uri
+        .replace("https://www.wikidata.org/entity/", "")
+        .replace("http://www.wikidata.org/entity/", "");
+    }
+
+    function wikidataEntityLink(uri) {
+      const qid = qidFromWdUri(uri);
+      return qid ? `https://www.wikidata.org/wiki/${qid}` : "";
+    }
+
+    function wikipediaFromTitle(title, lang = "fr") {
+      const t = String(title ?? "").trim();
+      if (!t) return "";
+      return `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(t.replaceAll(" ", "_"))}`;
+    }
+
+    let YEAR_MIN = 1900;
+    let YEAR_MAX = 2100;
+
+    function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+
+    function getYearWindow() {
+      const mode = document.getElementById("yearMode").value; // all | range
+      if (mode !== "range") return { mode, yMin: null, yMax: null };
+
+      const a = Number(document.getElementById("yMin").value);
+      const b = Number(document.getElementById("yMax").value);
+
+      let yMin = Number.isFinite(a) ? clamp(a, YEAR_MIN, YEAR_MAX) : null;
+      let yMax = Number.isFinite(b) ? clamp(b, YEAR_MIN, YEAR_MAX) : null;
+
+      if (yMin == null || yMax == null) return { mode, yMin: null, yMax: null };
+      if (yMin > yMax) { const t = yMin; yMin = yMax; yMax = t; }
+
+      return { mode, yMin, yMax };
+    }
+
+    function applyYearDomain(minY, maxY) {
+      const minNum = Number(minY);
+      const maxNum = Number(maxY);
+
+      // robust fallback
+      if (!Number.isFinite(minNum) || !Number.isFinite(maxNum) || minNum > maxNum) return;
+
+      YEAR_MIN = minNum;
+      YEAR_MAX = maxNum;
+
+      const yMinR = document.getElementById("yMin");
+      const yMaxR = document.getElementById("yMax");
+      const yMinN = document.getElementById("yMinNum");
+      const yMaxN = document.getElementById("yMaxNum");
+
+      // update HTML attributes
+      [yMinR, yMaxR, yMinN, yMaxN].forEach(el => {
+        el.min = String(YEAR_MIN);
+        el.max = String(YEAR_MAX);
+      });
+
+      // set initial values to full data range
+      yMinR.value = String(YEAR_MIN);
+      yMinN.value = String(YEAR_MIN);
+      yMaxR.value = String(YEAR_MAX);
+      yMaxN.value = String(YEAR_MAX);
+
+      setText("yMinLabel", String(YEAR_MIN));
+      setText("yMaxLabel", String(YEAR_MAX));
+    }
+
+    function syncYearUI(from) {
+      const yMinR = document.getElementById("yMin");
+      const yMaxR = document.getElementById("yMax");
+      const yMinN = document.getElementById("yMinNum");
+      const yMaxN = document.getElementById("yMaxNum");
+
+      let yMin = Number(from === "minNum" ? yMinN.value : yMinR.value);
+      let yMax = Number(from === "maxNum" ? yMaxN.value : yMaxR.value);
+
+      if (!Number.isFinite(yMin)) yMin = YEAR_MIN;
+      if (!Number.isFinite(yMax)) yMax = YEAR_MAX;
+
+      yMin = clamp(Math.round(yMin), YEAR_MIN, YEAR_MAX);
+      yMax = clamp(Math.round(yMax), YEAR_MIN, YEAR_MAX);
+
+      // keep order
+      if (yMin > yMax) {
+        if (from === "min" || from === "minNum") yMax = yMin;
+        else yMin = yMax;
+      }
+
+      yMinR.value = String(yMin);
+      yMaxR.value = String(yMax);
+      yMinN.value = String(yMin);
+      yMaxN.value = String(yMax);
+
+      setText("yMinLabel", String(yMin));
+      setText("yMaxLabel", String(yMax));
+
+      const mode = document.getElementById("yearMode").value;
+      setText("yModeLabel", mode === "range" ? "Range" : "All");
+
+      // disable controls when mode=all
+      const disabled = (mode !== "range");
+      [yMinR, yMaxR, yMinN, yMaxN].forEach(el => el.disabled = disabled);
+    }
+
+
+    let map = null;
+    let layerPlain = null;
+    let layerCluster = null;
+    let layerHeat = null;
+
+    let lastPts = [];
+    let lastBindingsForPlot = [];
+
+    let lastAggTrendBindings = [];
+    let lastAggTypeBindings = [];
+    let lastAggPieBindings = [];
+    let lastAggPostalBindings = [];
+
+    let lastBindingsAll = [];
+    let currentPage = 1; 
+    let pageSize = 10;
+    let activeGlobalIndex = -1;
+
+    const heatOptions = { radius: 38, blur: 26, maxZoom: 17, minOpacity: 0.35 };
+
+    function pushUiError(msg) {
+      const cur = document.getElementById("error").textContent || "";
+      setText("error", (cur ? (cur + "\n") : "") + String(msg));
+    }
+
+    function initLeaflet() {
+      map = L.map("map", { scrollWheelZoom: true }).setView([PARIS.lat, PARIS.lon], 12);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(map);
+
+      layerPlain = L.layerGroup().addTo(map);
+
+      if (typeof L.markerClusterGroup !== "function") {
+        pushUiError("Leaflet.markercluster n'est pas chargé. Mode 'cluster' indisponible.");
+        layerCluster = null;
+      } else {
+        layerCluster = L.markerClusterGroup({
+          showCoverageOnHover: false,
+          spiderfyOnMaxZoom: true,
+          disableClusteringAtZoom: 16,
+          maxClusterRadius: 42
+        });
+      }
+
+      layerHeat = null;
+    }
+
+    function safeFitBounds(bounds) {
+      if (!map || !map._loaded) return;
+
+      const container = map.getContainer();
+      const w = container?.clientWidth ?? 0;
+      const h = container?.clientHeight ?? 0;
+
+      if (w === 0 || h === 0) {
+        map.setView([PARIS.lat, PARIS.lon], 11);
+        return;
+      }
+
+      map.invalidateSize(true);
+      map.fitBounds(bounds, { padding: [30, 30], animate: false });
+    }
+
+    function ensureHeatLayer() {
+      if (!map) return null;
+
+      if (!L.heatLayer) {
+        pushUiError("Leaflet.heat n'est pas chargé. Mode 'heatmap' indisponible.");
+        return null;
+      }
+
+      if (layerHeat) {
+        try { if (map.hasLayer(layerHeat)) map.removeLayer(layerHeat); } catch (e) {}
+        layerHeat = null;
+      }
+
+      layerHeat = L.heatLayer([], heatOptions);
+      layerHeat.addTo(map);
+      return layerHeat;
+    }
+
+    function clearAllLayers() {
+      if (!map) return;
+
+      if (layerPlain) layerPlain.clearLayers();
+
+      if (layerCluster) {
+        try {
+          if (map.hasLayer(layerCluster)) map.removeLayer(layerCluster);
+          layerCluster.clearLayers();
+        } catch (e) {}
+      }
+
+      if (layerHeat) {
+        try { if (map.hasLayer(layerHeat)) map.removeLayer(layerHeat); } catch (e) {}
+        layerHeat = null;
+      }
+    }
+
+    function makePrettyDot(lat, lon, size) {
+      return L.circleMarker([lat, lon], {
+        radius: size,
+        color: "rgba(255,255,255,0.9)",
+        weight: 2,
+        fillColor: "rgba(233, 60, 73, 0.85)",
+        fillOpacity: 0.85
+      });
+    }
+
+    function buildPopup(p) {
+      const wdDirector = p.directorWd ? wikidataEntityLink(p.directorWd) : "";
+      const wdFilm = p.filmWd ? wikidataEntityLink(p.filmWd) : "";
+      const wiki = p.wikipedia || wikipediaFromTitle(p.title, "fr");
+
+      const links = [];
+      if (wdDirector) links.push(`<a href="${escHtml(wdDirector)}" target="_blank" rel="noreferrer">Wikidata réalisateur</a>`);
+      if (wdFilm) links.push(`<a href="${escHtml(wdFilm)}" target="_blank" rel="noreferrer">Wikidata film</a>`);
+      if (wiki) links.push(`<a href="${escHtml(wiki)}" target="_blank" rel="noreferrer">Wikipedia</a>`);
+
+      return `
+        <div>
+          <div class="popup-title">${escHtml(p.title)}</div>
+          <div class="popup-meta">
+            ${escHtml(p.year)} — ${escHtml(p.type)}${p.director ? ` · ${escHtml(p.director)}` : ""}
+          </div>
+          <div class="popup-addr">
+            ${escHtml(p.address || "-")}
+            <span class="pill">${escHtml(p.postal || "")}</span>
+          </div>
+          <div class="popup-foot">${links.length ? links.join(" · ") : ""}</div>
+        </div>
+      `;
+    }
+
+    function drawOnMap(points, mode, dotSize) {
+      if (!map) return;
+
+      clearAllLayers();
+
+      if (!points || points.length === 0) {
+        map.invalidateSize(true);
+        map.setView([PARIS.lat, PARIS.lon], 11);
+        return;
+      }
+
+      const latlngs = points.map(p => [p.lat, p.lon]);
+      const bounds = L.latLngBounds(latlngs);
+
+      requestAnimationFrame(() => {
+        if (mode === "heat") {
+          const heatPts = points.map(p => [p.lat, p.lon, 1.0]);
+          const hl = ensureHeatLayer();
+          if (!hl) {
+            pushUiError("Fallback: heatmap indisponible → affichage en points simples.");
+            mode = "plain";
+          } else {
+            try {
+              hl.setLatLngs(heatPts);
+              if (hl.redraw) hl.redraw();
+              safeFitBounds(bounds);
+              return;
+            } catch (e) {
+              pushUiError("Heatmap error: " + (e?.message ?? e));
+              mode = "plain";
+            }
+          }
+        }
+
+        if (mode === "cluster") {
+          if (!layerCluster) {
+            pushUiError("Fallback: cluster indisponible → affichage en points simples.");
+            mode = "plain";
+          } else {
+            for (const p of points) {
+              const m = makePrettyDot(p.lat, p.lon, dotSize);
+              m.bindPopup(buildPopup(p));
+              layerCluster.addLayer(m);
+            }
+            map.addLayer(layerCluster);
+            safeFitBounds(bounds);
+            return;
+          }
+        }
+
+        for (const p of points) {
+          const m = makePrettyDot(p.lat, p.lon, dotSize);
+          m.bindPopup(buildPopup(p));
+          m.addTo(layerPlain);
+        }
+        safeFitBounds(bounds);
+      });
+    }
+
+
+
+    function valuesBlock(varName, arr) {
+      if (!arr || arr.length === 0) return "";
+      const items = arr.map(v => `"${safeLiteral(v)}"`).join(" ");
+      return `VALUES ?${varName} { ${items} }`;
+    }
+
+    function yearParamOrUndef(n) {
+      if (!Number.isFinite(n)) return "UNDEF";
+      const v = clamp(Math.trunc(n), YEAR_MIN, YEAR_MAX);
+      return `"${v}"^^xsd:integer`;
+    }
+
+    function buildYearMinMaxQuery(graph) {
+      const graphOpen = graph ? `GRAPH <${graph}> {` : "";
+      const graphClose = graph ? `}` : "";
+      return `
+PREFIX : <${NS.base}>
+PREFIX xsd: <${NS.xsd}>
+SELECT (MIN(xsd:integer(STR(?y0))) AS ?yMin) (MAX(xsd:integer(STR(?y0))) AS ?yMax)
+WHERE {
+  ${graphOpen}
+  ?shooting a :FilmShooting ;
+           :Année_du_tournage ?y0 .
+  ${graphClose}
+}
+      `.trim();
+    }
+
+
+    function buildQuery({ yMin, yMax, typeList, qTitle, postalList, limit, onlyWd, graph }) {
+      const graphOpen = graph ? `GRAPH <${graph}> {` : "";
+      const graphClose = graph ? `}` : "";
+
+      const yMinParam = yearParamOrUndef(yMin);
+      const yMaxParam = yearParamOrUndef(yMax);
+      const titleParam = qTitle ? `"${safeLiteral(qTitle)}"` : "UNDEF";
+
+      const typeValues = valuesBlock("typeParam", typeList);
+      const postalValues = valuesBlock("postalParam", postalList);
+
+      const typeExists = typeValues
+        ? ` FILTER EXISTS {   ${typeValues}   FILTER(CONTAINS(LCASE(STR(?shootType0)), LCASE(STR(?typeParam)))) }`.trim()
+        : "";
+
+      const postalExists = postalValues
+        ? ` FILTER EXISTS {   ${postalValues}   FILTER(STR(?postal0) = STR(?postalParam)) }`.trim()
+        : "";
+
+      const onlyWdBlock = (String(onlyWd) === "1")
+        ? `FILTER(BOUND(?directorWd0) || BOUND(?filmWd0))`
+        : "";
+
+      return `
+PREFIX :      <${NS.base}>
+PREFIX rdfs:  <${NS.rdfs}>
+PREFIX xsd:   <${NS.xsd}>
+
+SELECT
+  ?shooting
+  (SAMPLE(?title0)        AS ?title)
+  (SAMPLE(?year0)         AS ?year)
+  (SAMPLE(?shootType0)    AS ?shootType)
+  (SAMPLE(?directorName0) AS ?directorName)
+  (SAMPLE(?address0)      AS ?address)
+  (SAMPLE(?postal0)       AS ?postal)
+  (SAMPLE(?geoPoint2D0)   AS ?geoPoint2D)
+
+  (SAMPLE(?directorWd0)   AS ?directorWd)
+  (SAMPLE(?filmWd0)       AS ?filmWd)
+  (SAMPLE(?wikipedia0)    AS ?wikipedia)
+
+WHERE {
+
+  VALUES (?yMinParam ?yMaxParam ?titleParam) { (${yMinParam} ${yMaxParam} ${titleParam}) }
+
+  ${graphOpen}
+  ?shooting a :FilmShooting ;
+            :Titre ?title0 ;
+            :Année_du_tournage ?year0 ;
+            :Type_de_tournage ?shootType0 .
+
+  OPTIONAL { ?shooting :nomRealisateur ?directorName0 . }
+  OPTIONAL { ?shooting :aPourRealisateur ?directorWd0 . }
+  OPTIONAL { ?shooting :aPourFilm ?filmWd0 . }
+
+  OPTIONAL {
+    ?shooting :aIdentifiantLieu ?idLieu .
+    OPTIONAL { ?idLieu :adresse ?address0 . }
+    OPTIONAL { ?idLieu :codePostal ?postal0 . }
+    OPTIONAL {
+      ?idLieu :aGeometrie ?geom .
+      OPTIONAL { ?geom :geoPoint2D ?geoPoint2D0 . }
+    }
+  }
+  ${graphClose}
+
+
+  BIND(xsd:integer(STR(?year0)) AS ?yearInt)
+  FILTER(!BOUND(?yMinParam) || ?yearInt >= ?yMinParam)
+  FILTER(!BOUND(?yMaxParam) || ?yearInt <= ?yMaxParam)
+
+
+  FILTER(!BOUND(?titleParam) || CONTAINS(LCASE(STR(?title0)), LCASE(STR(?titleParam))))
+
+
+  ${typeExists}
+  ${postalExists}
+
+  ${onlyWdBlock}
+
+  OPTIONAL { ?shooting :wikipedia ?wikipedia0 . }
+}
+GROUP BY ?shooting
+LIMIT ${Number(limit) || 50}
+      `.replace(/\n[ \t]+\n/g, "\n").trim();
+    }
+
+    async function sparqlSelect(endpoint, query) {
+      const url = new URL(endpoint);
+      url.searchParams.set("query", query);
+
+      const res = await fetch(url.toString(), {
+        method: "GET",
+        headers: { "Accept": "application/sparql-results+json" }
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status} ${res.statusText}\n${txt}`);
+      }
+      return res.json();
+    }
+
+
+    function buildCommonWhere({graph, yMin, yMax, typeList, qTitle, postalList}) {
+      const graphOpen = graph ? `GRAPH <${graph}> {` : "";
+      const graphClose = graph ? `}` : "";
+
+      const yMinParam = yearParamOrUndef(yMin);
+      const yMaxParam = yearParamOrUndef(yMax);
+      const titleParam = qTitle ? `"${safeLiteral(qTitle)}"` : "UNDEF";
+
+      const typeValues = valuesBlock("typeParam", typeList);
+      const postalValues = valuesBlock("postalParam", postalList);
+
+      const typeExists = typeValues
+        ? ` FILTER EXISTS {   ${typeValues}   FILTER(CONTAINS(LCASE(STR(?shootType0)), LCASE(STR(?typeParam)))) }`.trim()
+        : "";
+
+      const postalExists = postalValues
+        ? ` FILTER EXISTS {   ${postalValues}   FILTER(STR(?postal0) = STR(?postalParam)) }`.trim()
+        : "";
+
+      return `
+
+VALUES (?yMinParam ?yMaxParam ?titleParam) { (${yMinParam} ${yMaxParam} ${titleParam}) }
+
+${graphOpen}
+  ?shooting a :FilmShooting ;
+            :Titre ?title0 ;
+            :Année_du_tournage ?year0 ;
+            :Type_de_tournage ?shootType0 .
+
+  OPTIONAL {
+    ?shooting :aIdentifiantLieu ?idLieu .
+    OPTIONAL { ?idLieu :codePostal ?postal0 . }
+  }
+${graphClose}
+
+
+BIND(xsd:integer(STR(?year0)) AS ?yearInt)
+FILTER(!BOUND(?yMinParam) || ?yearInt >= ?yMinParam)
+FILTER(!BOUND(?yMaxParam) || ?yearInt <= ?yMaxParam)
+
+
+FILTER(!BOUND(?titleParam) || CONTAINS(LCASE(STR(?title0)), LCASE(STR(?titleParam))))
+
+
+${typeExists}
+${postalExists}
+      `.trim();
+    }
+
+    function buildAggTrendQuery(params) {
+      return `
+PREFIX : <${NS.base}>
+PREFIX xsd: <${NS.xsd}>
+SELECT ?year (COUNT(DISTINCT ?shooting) AS ?n)
+WHERE {
+  ${buildCommonWhere(params)}
+  BIND(STR(?year0) AS ?year)
+}
+GROUP BY ?year
+ORDER BY ?year
+      `.trim();
+    }
+
+    function buildAggTypeQuery(params) {
+      return `
+PREFIX : <${NS.base}>
+PREFIX xsd: <${NS.xsd}>
+SELECT ?type (COUNT(DISTINCT ?shooting) AS ?n)
+WHERE {
+  ${buildCommonWhere(params)}
+  BIND(STR(?shootType0) AS ?type)
+}
+GROUP BY ?type
+ORDER BY DESC(?n)
+LIMIT 12
+      `.trim();
+    }
+
+    function buildAggPieQuery_SubSelect(params) {
+      return `
+PREFIX : <${NS.base}>
+PREFIX xsd: <${NS.xsd}>
+SELECT ?type (COUNT(*) AS ?n)
+WHERE {
+  {
+    SELECT DISTINCT ?shooting ?type
+    WHERE {
+      ${buildCommonWhere(params)}
+      BIND(STR(?shootType0) AS ?type)
+    }
+  }
+}
+GROUP BY ?type
+ORDER BY DESC(?n)
+LIMIT 10
+      `.trim();
+    }
+
+    function buildAggPostalQuery(params) {
+      return `
+PREFIX : <${NS.base}>
+PREFIX xsd: <${NS.xsd}>
+SELECT ?postal (COUNT(DISTINCT ?shooting) AS ?n)
+WHERE {
+  ${buildCommonWhere(params)}
+  BIND(COALESCE(STR(?postal0), "(sans code)") AS ?postal)
+}
+GROUP BY ?postal
+ORDER BY DESC(?n)
+LIMIT 15
+      `.trim();
+    }
+
+    // =========================
+    // Wikidata side panel 
+    // =========================
+    const wdCache = new Map();
+    let wdCurrentToken = 0;
+
+    function showWdPanel() {
+      const p = document.getElementById("wdPanel");
+      p.style.display = "block";
+      requestAnimationFrame(() => p.classList.add("show"));
+    }
+
+    function hideWdPanel() {
+      const p = document.getElementById("wdPanel");
+      p.classList.remove("show");
+      setTimeout(() => { p.style.display = "none"; }, 180);
+    }
+
+    function setWdLoading(qid, kindLabel) {
+      showWdPanel();
+      setText("wdTitle", `Chargement… (${qid})`);
+      setText("wdMeta", kindLabel ? kindLabel : "");
+      setText("wdDesc", "—");
+      document.getElementById("wdLinks").innerHTML = "";
+      document.getElementById("wdBody").innerHTML = `
+        <div class="wdRow">
+          <div class="wdLabel">Chargement</div>
+          <div class="wdValue">
+            <div class="wdSkeleton" style="width:78%;margin:8px 0;"></div>
+            <div class="wdSkeleton" style="width:92%;margin:8px 0;"></div>
+            <div class="wdSkeleton" style="width:65%;margin:8px 0;"></div>
+          </div>
+        </div>
+      `;
+      const img = document.getElementById("wdImg");
+      img.style.display = "none";
+      img.removeAttribute("src");
+    }
+
+    function formatWdTime(iso) {
+      const s = String(iso || "");
+      const m = s.match(/([0-9]{4})-([0-9]{2})-([0-9]{2})/);
+      return m ? `${m[1]}-${m[2]}-${m[3]}` : s;
+    }
+
+    function pickLabel(obj, lang = "fr") { return obj?.labels?.[lang]?.value || obj?.labels?.en?.value || obj?.labels?.fr?.value || ""; }
+    function pickDesc(obj, lang = "fr") { return obj?.descriptions?.[lang]?.value || obj?.descriptions?.en?.value || obj?.descriptions?.fr?.value || ""; }
+    function pickSitelink(obj, lang = "fr") { const key = `${lang}wiki`; return obj?.sitelinks?.[key]?.url || ""; }
+
+    function getBestClaimQids(entity, pid) {
+      const arr = entity?.claims?.[pid];
+      if (!Array.isArray(arr)) return [];
+      const out = [];
+      for (const c of arr) {
+        const v = c?.mainsnak?.datavalue?.value;
+        const id = v?.id;
+        if (id && !out.includes(id)) out.push(id);
+        if (out.length >= 8) break;
+      }
+      return out;
+    }
+
+    function getStringClaim(entity, pid) {
+      const arr = entity?.claims?.[pid];
+      if (!Array.isArray(arr) || !arr.length) return "";
+      const v = arr[0]?.mainsnak?.datavalue?.value;
+      return (typeof v === "string") ? v : "";
+    }
+
+    function getTimeClaim(entity, pid) {
+      const arr = entity?.claims?.[pid];
+      if (!Array.isArray(arr) || !arr.length) return "";
+      const v = arr[0]?.mainsnak?.datavalue?.value;
+      const t = v?.time;
+      return t ? formatWdTime(t) : "";
+    }
+
+    function commonsFileToUrl(filename) {
+      const f = String(filename || "").trim().replaceAll(" ", "_");
+      if (!f) return "";
+      return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(f)}?width=720`;
+    }
+
+    async function fetchWikidataEntityJson(qid) {
+      const url = `https://www.wikidata.org/wiki/Special:EntityData/${encodeURIComponent(qid)}.json`;
+      const res = await fetch(url, { method: "GET", mode: "cors", headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(`Wikidata HTTP ${res.status} ${res.statusText}`);
+      return res.json();
+    }
+
+    async function resolveLabelsForQids(qids, lang = "fr") {
+      const need = qids.filter(q => !wdCache.has(q));
+      if (need.length) {
+        for (const q of need) {
+          try {
+            const j = await fetchWikidataEntityJson(q);
+            const ent = j?.entities?.[q];
+            if (ent) {
+              wdCache.set(q, { qid: q, label: pickLabel(ent, lang), desc: pickDesc(ent, lang), sitelink: pickSitelink(ent, lang) });
+            }
+          } catch (_) {}
+        }
+      }
+      return qids.map(q => wdCache.get(q)?.label || q);
+    }
+
+    function renderWdPanel(data) {
+      showWdPanel();
+      setText("wdTitle", data.title || data.qid);
+      setText("wdMeta", data.meta || "");
+      setText("wdDesc", data.desc || "—");
+
+      const links = [];
+      if (data.wikidataUrl) links.push(`<a class="wdLinkBtn" href="${escHtml(data.wikidataUrl)}" target="_blank" rel="noreferrer">Wikidata</a>`);
+      if (data.wikipediaUrl) links.push(`<a class="wdLinkBtn" href="${escHtml(data.wikipediaUrl)}" target="_blank" rel="noreferrer">Wikipedia</a>`);
+      document.getElementById("wdLinks").innerHTML = links.length ? links.join("") : "";
+
+      const img = document.getElementById("wdImg");
+      if (data.imageUrl) { img.src = data.imageUrl; img.style.display = "block"; }
+      else { img.style.display = "none"; img.removeAttribute("src"); }
+
+      const rows = [];
+      for (const r of data.rows) {
+        rows.push(`
+          <div class="wdRow">
+            <div class="wdLabel">${escHtml(r.k)}</div>
+            <div class="wdValue">${r.v}</div>
+          </div>
+        `);
+      }
+      document.getElementById("wdBody").innerHTML =
+        rows.join("") || `<div class="small" style="color:#666">Aucun détail disponible.</div>`;
+    }
+
+    async function loadWikidataDetails({ qid, kind }) {
+      const token = ++wdCurrentToken;
+      const kindLabel = kind ? `Type: ${kind}` : "";
+      setWdLoading(qid, kindLabel);
+
+      if (wdCache.has(`full:${qid}`)) {
+        if (token !== wdCurrentToken) return;
+        renderWdPanel(wdCache.get(`full:${qid}`));
+        return;
+      }
+
+      try {
+        const json = await fetchWikidataEntityJson(qid);
+        if (token !== wdCurrentToken) return;
+
+        const ent = json?.entities?.[qid];
+        if (!ent) throw new Error("Wikidata: entity not found");
+
+        const title = pickLabel(ent, "fr") || pickLabel(ent, "en") || qid;
+        const desc = pickDesc(ent, "fr") || pickDesc(ent, "en") || "";
+        const wikipediaUrl = pickSitelink(ent, "fr") || pickSitelink(ent, "en") || "";
+        const wikidataUrl = `https://www.wikidata.org/wiki/${qid}`;
+
+        const imgFile = getStringClaim(ent, "P18");
+        const imageUrl = imgFile ? commonsFileToUrl(imgFile) : "";
+
+        const born = getTimeClaim(ent, "P569");
+        const died = getTimeClaim(ent, "P570");
+        const inception = getTimeClaim(ent, "P571");
+        const publication = getTimeClaim(ent, "P577");
+        const countryQ = getBestClaimQids(ent, "P27");
+        const occupationQ = getBestClaimQids(ent, "P106");
+        const directorQ = getBestClaimQids(ent, "P57");
+        const genreQ = getBestClaimQids(ent, "P136");
+        const instanceOfQ = getBestClaimQids(ent, "P31");
+
+        const [countryL, occL, dirL, genreL, instL] = await Promise.all([
+          resolveLabelsForQids(countryQ, "fr"),
+          resolveLabelsForQids(occupationQ, "fr"),
+          resolveLabelsForQids(directorQ, "fr"),
+          resolveLabelsForQids(genreQ, "fr"),
+          resolveLabelsForQids(instanceOfQ, "fr")
+        ]);
+
+        const rows = [];
+        if (instL.length) rows.push({ k: "Instance of", v: instL.map(x => `<span class="pill">${escHtml(x)}</span>`).join(" ") });
+        if (publication) rows.push({ k: "Publication", v: escHtml(publication) });
+        if (inception) rows.push({ k: "Inception", v: escHtml(inception) });
+        if (born) rows.push({ k: "Date de naissance", v: escHtml(born) });
+        if (died) rows.push({ k: "Date de décès", v: escHtml(died) });
+        if (countryL.length) rows.push({ k: "Pays", v: countryL.map(x => `<span class="pill">${escHtml(x)}</span>`).join(" ") });
+        if (occL.length) rows.push({ k: "Occupation", v: occL.map(x => `<span class="pill">${escHtml(x)}</span>`).join(" ") });
+        if (dirL.length) rows.push({ k: "Réalisateur (Wikidata)", v: dirL.map(x => `<span class="pill">${escHtml(x)}</span>`).join(" ") });
+        if (genreL.length) rows.push({ k: "Genre", v: genreL.map(x => `<span class="pill">${escHtml(x)}</span>`).join(" ") });
+
+        const data = { qid, meta: kindLabel, title, desc, wikipediaUrl, wikidataUrl, imageUrl, rows };
+        wdCache.set(`full:${qid}`, data);
+
+        if (token !== wdCurrentToken) return;
+        renderWdPanel(data);
+      } catch (e) {
+        if (token !== wdCurrentToken) return;
+        showWdPanel();
+        setText("wdTitle", `Erreur (${qid})`);
+        setText("wdMeta", kindLabel);
+        setText("wdDesc", "—");
+        document.getElementById("wdLinks").innerHTML = "";
+        document.getElementById("wdBody").innerHTML =
+          `<div class="small" style="color:#b00020;white-space:pre-wrap">${escHtml(String(e?.message ?? e))}</div>`;
+        const img = document.getElementById("wdImg");
+        img.style.display = "none";
+        img.removeAttribute("src");
+      }
+    }
+
+
+    function getTotalPages() {
+      if (!lastBindingsAll.length) return 1;
+      return Math.max(1, Math.ceil(lastBindingsAll.length / pageSize));
+    }
+
+    function getPageSlice(page) {
+      const total = lastBindingsAll.length;
+      if (total === 0) return { start: 0, end: 0, items: [] };
+
+      const p = clamp(page, 1, getTotalPages());
+      const start = (p - 1) * pageSize;
+      const end = Math.min(total, start + pageSize);
+      return { start, end, items: lastBindingsAll.slice(start, end) };
+    }
+
+    function updatePagerUI() {
+      const total = lastBindingsAll.length;
+      const totalPages = getTotalPages();
+      currentPage = clamp(currentPage, 1, totalPages);
+
+      const { start, end } = getPageSlice(currentPage);
+      const pageInfo = `Page ${currentPage} / ${totalPages}`;
+      const rowInfo = total === 0 ? `Rows 0–0 / 0` : `Rows ${start + 1}–${end} / ${total}`;
+
+      ["pageInfo", "pageInfo2"].forEach(id => setText(id, pageInfo));
+      ["rowInfo", "rowInfo2"].forEach(id => setText(id, rowInfo));
+
+      const prevDisabled = (currentPage <= 1) || total === 0;
+      const nextDisabled = (currentPage >= totalPages) || total === 0;
+
+      ["btnPrev","btnPrev2","btnFirst","btnFirst2"].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.disabled = prevDisabled;
+      });
+      ["btnNext","btnNext2","btnLast","btnLast2"].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.disabled = nextDisabled;
+      });
+    }
+
+    function gotoPage(p) {
+      currentPage = clamp(p, 1, getTotalPages());
+      renderTablePage();
+    }
+
+    function renderTablePage() {
+      updatePagerUI();
+      const { start, items } = getPageSlice(currentPage);
+      renderTable(items, start);
+    }
+
+    // =========================
+    // Table render
+    // =========================
+    function renderTable(pagedBindings, globalOffset) {
+      const tbody = document.querySelector("#tbl tbody");
+      tbody.innerHTML = "";
+
+      const endpoint = document.getElementById("endpoint").value.trim();
+
+      for (let i = 0; i < pagedBindings.length; i++) {
+        const b = pagedBindings[i];
+        const globalIndex = globalOffset + i;
+
+        const title = b.title?.value ?? "";
+        const year = b.year?.value ?? "";
+        const shootType = b.shootType?.value ?? "";
+        const director = b.directorName?.value ?? "";
+        const address = b.address?.value ?? "";
+        const postal = b.postal?.value ?? "";
+        const uri = b.shooting?.value ?? "";
+
+        const directorWd = b.directorWd?.value ?? "";
+        const filmWd = b.filmWd?.value ?? "";
+        const wikipedia = b.wikipedia?.value ?? "";
+
+        const describeLink = uri ? buildDescribeLink(endpoint, uri) : "";
+        const wdDirectorLink = directorWd ? wikidataEntityLink(directorWd) : "";
+        const wdFilmLink = filmWd ? wikidataEntityLink(filmWd) : "";
+        const wikiFallback = wikipedia || wikipediaFromTitle(title, "fr");
+
+        const lodBits = [];
+        if (wdDirectorLink) lodBits.push(`<a href="${escHtml(wdDirectorLink)}" target="_blank" rel="noreferrer">Wikidata (réalis.)</a>`);
+        if (wdFilmLink) lodBits.push(`<a href="${escHtml(wdFilmLink)}" target="_blank" rel="noreferrer">Wikidata (film)</a>`);
+        if (wikiFallback) lodBits.push(`<a href="${escHtml(wikiFallback)}" target="_blank" rel="noreferrer">Wikipedia</a>`);
+
+        const tr = document.createElement("tr");
+        tr.dataset.globalIndex = String(globalIndex);
+        tr.innerHTML = `
+          <td>${escHtml(title)}</td>
+          <td>${escHtml(year)}</td>
+          <td>${escHtml(shootType)}</td>
+          <td>${escHtml(director)}</td>
+          <td>${escHtml(address)}</td>
+          <td>${escHtml(postal)}</td>
+          <td class="small">${lodBits.length ? lodBits.join("<br/>") : "-"}</td>
+          <td class="small">${describeLink ? `<a href="${escHtml(describeLink)}" target="_blank" rel="noreferrer">RDF (DESCRIBE)</a>` : "-"}</td>
+        `;
+
+        if (globalIndex === activeGlobalIndex) tr.classList.add("active");
+
+        const qidFilm = qidFromWdUri(filmWd);
+        const qidDir = qidFromWdUri(directorWd);
+
+        tr.addEventListener("click", (ev) => {
+          if (ev.target && ev.target.closest && ev.target.closest("a")) return;
+
+          activeGlobalIndex = globalIndex;
+
+          document.querySelectorAll("#tbl tbody tr").forEach(r => r.classList.remove("active"));
+          tr.classList.add("active");
+
+          if (qidFilm) { loadWikidataDetails({ qid: qidFilm, kind: "Film" }); return; }
+          if (qidDir)  { loadWikidataDetails({ qid: qidDir,  kind: "Réalisateur" }); return; }
+
+          showWdPanel();
+          setText("wdTitle", "Aucun lien Wikidata");
+          setText("wdMeta", "");
+          setText("wdDesc", "—");
+          document.getElementById("wdLinks").innerHTML = "";
+          document.getElementById("wdBody").innerHTML =
+            `<div class="wdRow"><div class="wdLabel">Info</div><div class="wdValue">Cette ligne n'a pas <code>:aPourFilm</code> ni <code>:aPourRealisateur</code> aligné sur Wikidata.</div></div>`;
+          const img = document.getElementById("wdImg");
+          img.style.display = "none";
+          img.removeAttribute("src");
+        });
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    function extractPoints(bindings) {
+      const pts = [];
+      let geoPresent = 0;
+      let geoParsed = 0;
+      const samples = [];
+
+      for (const b of bindings) {
+        const raw = b.geoPoint2D?.value ?? "";
+        if (raw) {
+          geoPresent++;
+          if (samples.length < 5) samples.push(raw);
+        }
+
+        const p = parseLatLonParisAware(raw);
+        if (!p) continue;
+
+        geoParsed++;
+        pts.push({
+          lat: p.lat,
+          lon: p.lon,
+          title: b.title?.value ?? "",
+          year: b.year?.value ?? "",
+          type: b.shootType?.value ?? "",
+          director: b.directorName?.value ?? "",
+          address: b.address?.value ?? "",
+          postal: b.postal?.value ?? "",
+          rawGeo: raw,
+          directorWd: b.directorWd?.value ?? "",
+          filmWd: b.filmWd?.value ?? "",
+          wikipedia: b.wikipedia?.value ?? ""
+        });
+      }
+
+      return { pts, geoPresent, geoParsed, samples };
+    }
+
+    function renderMapBadge({ results, geoPresent, geoParsed, points, samples, graph, mode }) {
+      const badge = document.getElementById("mapDebugBadge");
+      const heatOk = !!L.heatLayer;
+      const clusterOk = (typeof L.markerClusterGroup === "function");
+      badge.innerHTML = `
+        <div><b>Map Debug</b></div>
+        <div>mode = <code>${escHtml(mode)}</code> · graph = <code>${escHtml(graph || "(default)")}</code></div>
+        <div>résultats = ${results}</div>
+        <div>geoPoint2D présents = ${geoPresent}</div>
+        <div>geoPoint2D parsés (Paris) = ${geoParsed}</div>
+        <div><b>points affichés = ${points}</b></div>
+        <div style="margin-top:6px;color:#666">
+          libs: heat=${heatOk ? "OK" : "FAIL"} · cluster=${clusterOk ? "OK" : "FAIL"}<br/>
+          Exemples geoPoint2D (max 5):<br/>
+          ${samples.map(s => `<code>${escHtml(s)}</code>`).join("<br/>") || "-"}
+        </div>
+      `;
+    }
+
+
+    function throttle(fn, delay = 180) {
+      let t = null;
+      return (...args) => {
+        if (t) return;
+        t = setTimeout(() => {
+          t = null;
+          fn(...args);
+        }, delay);
+      };
+    }
+
+    function ensureTip(containerId) {
+      const el = document.getElementById(containerId);
+      let tip = el.querySelector(".d3tip");
+      if (!tip) {
+        tip = document.createElement("div");
+        tip.className = "d3tip";
+        el.appendChild(tip);
+      }
+      return tip;
+    }
+
+    function hideTip(tip) { if (tip) tip.classList.remove("show"); }
+
+    function showTip(tip, html, x, y) {
+      if (!tip) return;
+      tip.innerHTML = html;
+      tip.style.left = `${x}px`;
+      tip.style.top = `${y}px`;
+      tip.classList.add("show");
+    }
+
+    function clearD3(containerId) {
+      d3.select("#" + containerId).selectAll("svg").remove();
+      const el = document.getElementById(containerId);
+      const tip = el.querySelector(".d3tip");
+      if (tip) { tip.innerHTML = ""; tip.classList.remove("show"); }
+    }
+
+    function renderPlotD3(bindings) {
+      clearD3("plot");
+      const el = document.getElementById("plot");
+      const tip = ensureTip("plot");
+
+      const { pts } = extractPoints(bindings);
+      if (!pts.length) {
+        const w = el.clientWidth || 600;
+        const h = el.clientHeight || 420;
+        const svg = d3.select("#plot").append("svg").attr("width", w).attr("height", h);
+        svg.append("text")
+          .attr("x", w / 2)
+          .attr("y", h / 2)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#666")
+          .attr("font-size", 13)
+          .text("Aucun geoPoint2D parsé (dans la zone Paris).");
+        return;
+      }
+
+      const margin = { top: 34, right: 18, bottom: 44, left: 54 };
+      const w = el.clientWidth || 600;
+      const h = el.clientHeight || 420;
+      const iw = Math.max(10, w - margin.left - margin.right);
+      const ih = Math.max(10, h - margin.top - margin.bottom);
+
+      const x = d3.scaleLinear()
+        .domain(d3.extent(pts, d => d.lon)).nice()
+        .range([0, iw]);
+
+      const y = d3.scaleLinear()
+        .domain(d3.extent(pts, d => d.lat)).nice()
+        .range([ih, 0]);
+
+      const svg = d3.select("#plot").append("svg").attr("width", w).attr("height", h);
+      const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+      svg.append("text")
+        .attr("x", margin.left)
+        .attr("y", 22)
+        .attr("fill", "#111")
+        .attr("font-weight", 700)
+        .attr("font-size", 13)
+        .text(`Scatter (points: ${pts.length})`);
+
+      g.append("g")
+        .attr("transform", `translate(0,${ih})`)
+        .call(d3.axisBottom(x).ticks(6))
+        .call(g => g.selectAll("path,line").attr("stroke", "#ddd"));
+
+      g.append("g")
+        .call(d3.axisLeft(y).ticks(6))
+        .call(g => g.selectAll("path,line").attr("stroke", "#ddd"));
+
+      g.append("text")
+        .attr("x", iw / 2)
+        .attr("y", ih + 36)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#444")
+        .attr("font-size", 12)
+        .text("Longitude");
+
+      g.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -ih / 2)
+        .attr("y", -40)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#444")
+        .attr("font-size", 12)
+        .text("Latitude");
+
+      const dots = g.append("g");
+
+      dots.selectAll("circle")
+        .data(pts)
+        .enter()
+        .append("circle")
+        .attr("cx", d => x(d.lon))
+        .attr("cy", d => y(d.lat))
+        .attr("r", 4.2)
+        .attr("fill", "rgba(233,60,73,0.75)")
+        .attr("stroke", "rgba(255,255,255,0.9)")
+        .attr("stroke-width", 1.2)
+        .on("mousemove", (ev, d) => {
+          const rect = el.getBoundingClientRect();
+          const mx = ev.clientX - rect.left + 12;
+          const my = ev.clientY - rect.top + 12;
+          const html = `<b>${escHtml(d.title)}</b><br>${escHtml(d.year)} — ${escHtml(d.type)}<br>${escHtml(d.director)}<br>${escHtml(d.address)}`;
+          showTip(tip, html, mx, my);
+        })
+        .on("mouseleave", () => hideTip(tip));
+    }
+
+    function parseAggTrend(bindings) {
+      const data = [];
+      for (const b of bindings) {
+        const yStr = (b.year?.value ?? "").trim();
+        const nStr = (b.n?.value ?? "0").trim();
+        const y = Number(yStr);
+        const n = Number(nStr);
+        if (!Number.isFinite(y) || !Number.isFinite(n)) continue;
+        data.push({ year: y, label: yStr, value: n });
+      }
+      data.sort((a, b) => a.year - b.year);
+      return data;
+    }
+
+    function parseAggType(bindings) {
+      const data = [];
+      for (const b of bindings) {
+        const t = (b.type?.value ?? "").trim() || "(unknown)";
+        const n = Number((b.n?.value ?? "0").trim());
+        if (!Number.isFinite(n) || n <= 0) continue;
+        data.push({ type: t, value: n });
+      }
+      return data;
+    }
+
+    function parseAggPieType(bindings) {
+      const data = [];
+      for (const b of bindings) {
+        const t = (b.type?.value ?? "").trim() || "(unknown)";
+        const n = Number((b.n?.value ?? "0").trim());
+        if (!Number.isFinite(n) || n <= 0) continue;
+        data.push({ type: t, value: n });
+      }
+      return data;
+    }
+
+    function parseAggPostal(bindings) {
+      const data = [];
+      for (const b of bindings) {
+        const p = (b.postal?.value ?? "").trim() || "(sans code)";
+        const n = Number((b.n?.value ?? "0").trim());
+        if (!Number.isFinite(n) || n <= 0) continue;
+        data.push({ postal: p, value: n });
+      }
+      return data;
+    }
+
+    function renderLineChart(containerId, data, title) {
+      clearD3(containerId);
+      const el = document.getElementById(containerId);
+      const tip = ensureTip(containerId);
+
+      const w = el.clientWidth || 700;
+      const h = el.clientHeight || 360;
+      const margin = { top: 42, right: 18, bottom: 44, left: 56 };
+      const iw = Math.max(10, w - margin.left - margin.right);
+      const ih = Math.max(10, h - margin.top - margin.bottom);
+
+      const svg = d3.select("#" + containerId).append("svg").attr("width", w).attr("height", h);
+      svg.append("text").attr("x", margin.left).attr("y", 24).attr("fill", "#111")
+        .attr("font-weight", 700).attr("font-size", 13).text(title);
+
+      if (!data.length) {
+        svg.append("text")
+          .attr("x", w / 2).attr("y", h / 2)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#666").attr("font-size", 13)
+          .text("No aggregation result");
+        return;
+      }
+
+      const x = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.year)).nice()
+        .range([0, iw]);
+
+      const y = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.value) || 1]).nice()
+        .range([ih, 0]);
+
+      const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+      g.append("g")
+        .attr("transform", `translate(0,${ih})`)
+        .call(d3.axisBottom(x).ticks(Math.min(10, data.length)).tickFormat(d3.format("d")))
+        .call(g => g.selectAll("path,line").attr("stroke", "#ddd"));
+
+      g.append("g")
+        .call(d3.axisLeft(y).ticks(6))
+        .call(g => g.selectAll("path,line").attr("stroke", "#ddd"));
+
+      const line = d3.line()
+        .x(d => x(d.year))
+        .y(d => y(d.value))
+        .curve(d3.curveMonotoneX);
+
+      g.append("path")
+        .datum(data)
+        .attr("fill", "none")
+        .attr("stroke", "rgba(66,133,244,0.95)")
+        .attr("stroke-width", 3)
+        .attr("d", line);
+
+      const area = d3.area()
+        .x(d => x(d.year))
+        .y0(ih)
+        .y1(d => y(d.value))
+        .curve(d3.curveMonotoneX);
+
+      g.append("path")
+        .datum(data)
+        .attr("fill", "rgba(66,133,244,0.12)")
+        .attr("d", area);
+
+      g.selectAll("circle")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("cx", d => x(d.year))
+        .attr("cy", d => y(d.value))
+        .attr("r", 4.5)
+        .attr("fill", "rgba(66,133,244,0.95)")
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 1.5)
+        .on("mousemove", (ev, d) => {
+          const rect = el.getBoundingClientRect();
+          const mx = ev.clientX - rect.left + 12;
+          const my = ev.clientY - rect.top + 12;
+          showTip(tip, `<b>Année</b> ${escHtml(d.label)}<br><b>COUNT</b> ${d.value}`, mx, my);
+        })
+        .on("mouseleave", () => hideTip(tip));
+    }
+
+    function renderBarChartH(containerId, data, title, keyLabel = "type") {
+      clearD3(containerId);
+      const el = document.getElementById(containerId);
+      const tip = ensureTip(containerId);
+
+      const w = el.clientWidth || 700;
+      const h = el.clientHeight || 360;
+      const margin = { top: 42, right: 20, bottom: 36, left: 190 };
+      const iw = Math.max(10, w - margin.left - margin.right);
+      const ih = Math.max(10, h - margin.top - margin.bottom);
+
+      const svg = d3.select("#" + containerId).append("svg").attr("width", w).attr("height", h);
+      svg.append("text").attr("x", margin.left).attr("y", 24).attr("fill", "#111")
+        .attr("font-weight", 700).attr("font-size", 13).text(title);
+
+      if (!data.length) {
+        svg.append("text")
+          .attr("x", w / 2).attr("y", h / 2)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#666").attr("font-size", 13)
+          .text("No aggregation result");
+        return;
+      }
+
+      const maxV = d3.max(data, d => d.value) || 1;
+
+      const x = d3.scaleLinear()
+        .domain([0, maxV * 1.15])
+        .range([0, iw]);
+
+      const y = d3.scaleBand()
+        .domain(data.map(d => d[keyLabel]))
+        .range([0, ih])
+        .padding(0.18);
+
+      const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+      g.append("g")
+        .attr("transform", `translate(0,${ih})`)
+        .call(d3.axisBottom(x).ticks(6))
+        .call(g => g.selectAll("path,line").attr("stroke", "#ddd"));
+
+      g.append("g")
+        .call(d3.axisLeft(y))
+        .call(g => g.selectAll("path,line").attr("stroke", "#ddd"));
+
+      const bars = g.append("g");
+
+      bars.selectAll("rect")
+        .data(data)
+        .enter()
+        .append("rect")
+        .attr("x", 0)
+        .attr("y", d => y(d[keyLabel]))
+        .attr("height", y.bandwidth())
+        .attr("width", d => x(d.value))
+        .attr("fill", "rgba(66,133,244,0.72)")
+        .on("mousemove", (ev, d) => {
+          const rect = el.getBoundingClientRect();
+          const mx = ev.clientX - rect.left + 12;
+          const my = ev.clientY - rect.top + 12;
+          showTip(tip, `<b>${escHtml(d[keyLabel])}</b><br><b>COUNT</b> ${d.value}`, mx, my);
+        })
+        .on("mouseleave", () => hideTip(tip));
+
+      bars.selectAll("text")
+        .data(data)
+        .enter()
+        .append("text")
+        .attr("x", d => x(d.value) + 6)
+        .attr("y", d => (y(d[keyLabel]) + y.bandwidth() / 2))
+        .attr("dominant-baseline", "middle")
+        .attr("fill", "#111")
+        .attr("font-size", 12)
+        .text(d => d.value);
+    }
+
+    function renderPieChart(containerId, data, title) {
+      clearD3(containerId);
+      const el = document.getElementById(containerId);
+      const tip = ensureTip(containerId);
+
+      const w = el.clientWidth || 700;
+      const h = el.clientHeight || 360;
+
+      const svg = d3.select("#" + containerId).append("svg").attr("width", w).attr("height", h);
+      svg.append("text").attr("x", 18).attr("y", 24).attr("fill", "#111")
+        .attr("font-weight", 700).attr("font-size", 13).text(title);
+
+      if (!data.length) {
+        svg.append("text")
+          .attr("x", w / 2).attr("y", h / 2)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#666").attr("font-size", 13)
+          .text("No aggregation result");
+        return;
+      }
+
+      const sorted = [...data].sort((a, b) => b.value - a.value);
+      const total = sorted.reduce((s, d) => s + d.value, 0) || 1;
+
+      const cx = w * 0.35;
+      const cy = h * 0.56;
+      const r = Math.min(w, h) * 0.30;
+
+      const color = d3.scaleOrdinal()
+        .domain(sorted.map(d => d.type))
+        .range(d3.schemeTableau10);
+
+      const pie = d3.pie().value(d => d.value).sort(null);
+      const arc = d3.arc().innerRadius(r * 0.45).outerRadius(r);
+
+      const g = svg.append("g").attr("transform", `translate(${cx},${cy})`);
+
+      g.selectAll("path")
+        .data(pie(sorted))
+        .enter()
+        .append("path")
+        .attr("d", arc)
+        .attr("fill", d => color(d.data.type))
+        .attr("stroke", "rgba(255,255,255,0.9)")
+        .attr("stroke-width", 2)
+        .on("mousemove", (ev, d) => {
+          const rect = el.getBoundingClientRect();
+          const mx = ev.clientX - rect.left + 12;
+          const my = ev.clientY - rect.top + 12;
+          const pct = Math.round((d.data.value / total) * 1000) / 10;
+          showTip(tip, `<b>${escHtml(d.data.type)}</b><br><b>COUNT</b> ${d.data.value}<br><b>Part</b> ${pct}%`, mx, my);
+        })
+        .on("mouseleave", () => hideTip(tip));
+
+      g.append("text")
+        .attr("text-anchor", "middle")
+        .attr("y", -2)
+        .attr("fill", "#111")
+        .attr("font-weight", 800)
+        .attr("font-size", 16)
+        .text(total);
+
+      g.append("text")
+        .attr("text-anchor", "middle")
+        .attr("y", 18)
+        .attr("fill", "#666")
+        .attr("font-size", 12)
+        .text("Total");
+
+      const legendX = w * 0.62;
+      const legendY = 56;
+      const lineH = 22;
+      const legend = svg.append("g").attr("transform", `translate(${legendX},${legendY})`);
+
+      legend.selectAll("g")
+        .data(sorted)
+        .enter()
+        .append("g")
+        .attr("transform", (_, i) => `translate(0,${i * lineH})`)
+        .each(function(d) {
+          const row = d3.select(this);
+          row.append("rect")
+            .attr("x", 0).attr("y", 0)
+            .attr("width", 14).attr("height", 14)
+            .attr("rx", 3)
+            .attr("fill", color(d.type));
+          const pct = Math.round((d.value / total) * 1000) / 10;
+          row.append("text")
+            .attr("x", 20).attr("y", 12)
+            .attr("fill", "#111").attr("font-size", 12)
+            .text(`${d.type} — ${d.value} (${pct}%)`);
+        });
+    }
+
+    function renderStatsD3_FromAgg(aggTrendBindings, aggTypeBindings, aggPieBindings, aggPostalBindings) {
+      const years = parseAggTrend(aggTrendBindings);
+      const typesTop = parseAggType(aggTypeBindings);
+      const pieType = parseAggPieType(aggPieBindings);
+      const postalTop = parseAggPostal(aggPostalBindings).sort((a,b) => b.value - a.value);
+      const total = years.reduce((s, d) => s + d.value, 0);
+
+      renderLineChart("trend", years, `Tendance par année· Total: ${total || 0}`);
+      renderBarChartH("typebar", typesTop, "Répartition par type (Top 12)", "type");
+      renderPieChart("pie", pieType, "Distribution par type ");
+      renderBarChartH("postalbar", postalTop, "Répartition spatiale par code postal (Top 15)", "postal");
+    }
+
+    function clearCharts() {
+      clearD3("plot");
+      clearD3("trend");
+      clearD3("typebar");
+      clearD3("pie");
+      clearD3("postalbar");
+
+      const plotEl = document.getElementById("plot");
+      const trendEl = document.getElementById("trend");
+
+      const w1 = plotEl.clientWidth || 600;
+      const h1 = plotEl.clientHeight || 420;
+      d3.select("#plot").append("svg").attr("width", w1).attr("height", h1)
+        .append("text").attr("x", w1/2).attr("y", h1/2).attr("text-anchor","middle").attr("fill","#666").attr("font-size",13)
+        .text("No data");
+
+      const w2 = trendEl.clientWidth || 700;
+      const h2 = trendEl.clientHeight || 360;
+      d3.select("#trend").append("svg").attr("width", w2).attr("height", h2)
+        .append("text").attr("x", w2/2).attr("y", h2/2).attr("text-anchor","middle").attr("fill","#666").attr("font-size",13)
+        .text("No aggregation data");
+    }
+
+    // =========================
+    // Tabs
+    // =========================
+    function setupTabs() {
+      const btns = document.querySelectorAll(".tabbtn");
+      const mapWrap = document.getElementById("mapWrap");
+      const plotEl = document.getElementById("plot");
+      const statsEl = document.getElementById("stats");
+
+      btns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          btns.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+
+          const tab = btn.getAttribute("data-tab");
+
+          mapWrap.classList.add("hidden");
+          plotEl.classList.add("hidden");
+          statsEl.classList.add("hidden");
+
+          if (tab === "map") {
+            mapWrap.classList.remove("hidden");
+            setTimeout(() => {
+              if (!map) return;
+              map.invalidateSize(true);
+              const mode = document.getElementById("mapMode").value;
+              const dotSize = Number(document.getElementById("dotSize").value) || 8;
+              drawOnMap(lastPts, mode, dotSize);
+            }, 120);
+            return;
+          }
+
+          if (tab === "plot") {
+            plotEl.classList.remove("hidden");
+            setTimeout(() => {
+              if (lastBindingsForPlot.length) renderPlotD3(lastBindingsForPlot);
+            }, 60);
+            return;
+          }
+
+          statsEl.classList.remove("hidden");
+          setTimeout(() => {
+            renderStatsD3_FromAgg(lastAggTrendBindings, lastAggTypeBindings, lastAggPieBindings, lastAggPostalBindings);
+          }, 60);
+        });
+      });
+    }
+
+    // =========================
+    // Pagination wiring
+    // =========================
+    function setupPaginationControls() {
+      const map = {
+        btnPrev: () => gotoPage(currentPage - 1),
+        btnNext: () => gotoPage(currentPage + 1),
+        btnFirst: () => gotoPage(1),
+        btnLast: () => gotoPage(getTotalPages()),
+        btnPrev2: () => gotoPage(currentPage - 1),
+        btnNext2: () => gotoPage(currentPage + 1),
+        btnFirst2: () => gotoPage(1),
+        btnLast2: () => gotoPage(getTotalPages())
+      };
+      Object.keys(map).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("click", map[id]);
+      });
+
+      document.getElementById("pageSize").addEventListener("change", () => {
+        const v = Number(document.getElementById("pageSize").value);
+        pageSize = Number.isFinite(v) && v > 0 ? v : 10;
+        currentPage = 1;
+        activeGlobalIndex = -1;
+        hideWdPanel();
+        renderTablePage();
+      });
+    }
+
+    // =========================
+    // Init & Run
+    // =========================
+    async function init() {
+      document.getElementById("endpoint").value = FUSEKI_SPARQL_ENDPOINT_DEFAULT;
+      document.getElementById("graph").value = FUSEKI_GRAPH_DEFAULT;
+
+      pageSize = Number(document.getElementById("pageSize").value) || 10;
+
+
+      document.getElementById("yearMode").value = "range";
+
+      try {
+        const endpoint = document.getElementById("endpoint").value.trim();
+        const graph = document.getElementById("graph").value.trim();
+        const qMinMax = buildYearMinMaxQuery(graph);
+        const json = await sparqlSelect(endpoint, qMinMax);
+        const b = json?.results?.bindings?.[0];
+        const yMin = Number(b?.yMin?.value);
+        const yMax = Number(b?.yMax?.value);
+        if (Number.isFinite(yMin) && Number.isFinite(yMax)) {
+          applyYearDomain(yMin, yMax);
+        } else {
+          applyYearDomain(YEAR_MIN, YEAR_MAX);
+        }
+      } catch (e) {
+        applyYearDomain(YEAR_MIN, YEAR_MAX);
+      }
+
+      syncYearUI("init");
+
+      document.getElementById("yearMode").addEventListener("change", () => {
+        syncYearUI("mode");
+      });
+
+      document.getElementById("yMin").addEventListener("input", () => syncYearUI("min"));
+      document.getElementById("yMax").addEventListener("input", () => syncYearUI("max"));
+      document.getElementById("yMinNum").addEventListener("input", () => syncYearUI("minNum"));
+      document.getElementById("yMaxNum").addEventListener("input", () => syncYearUI("maxNum"));
+
+      initLeaflet();
+      setupTabs();
+      setupPaginationControls();
+      clearCharts();
+
+      document.getElementById("wdClose").addEventListener("click", () => {
+        hideWdPanel();
+        activeGlobalIndex = -1;
+        document.querySelectorAll("#tbl tbody tr").forEach(r => r.classList.remove("active"));
+      });
+
+      document.getElementById("mapMode").addEventListener("change", () => {
+        const mode = document.getElementById("mapMode").value;
+        const dotSize = Number(document.getElementById("dotSize").value) || 8;
+        drawOnMap(lastPts, mode, dotSize);
+      });
+
+      document.getElementById("dotSize").addEventListener("change", () => {
+        const mode = document.getElementById("mapMode").value;
+        const dotSize = Number(document.getElementById("dotSize").value) || 8;
+        drawOnMap(lastPts, mode, dotSize);
+      });
+
+      window.addEventListener("resize", throttle(() => {
+        const plotEl = document.getElementById("plot");
+        const statsEl = document.getElementById("stats");
+
+        const plotVisible = !plotEl.classList.contains("hidden");
+        const statsVisible = !statsEl.classList.contains("hidden");
+
+        if (plotVisible && lastBindingsForPlot.length) renderPlotD3(lastBindingsForPlot);
+        if (statsVisible) renderStatsD3_FromAgg(lastAggTrendBindings, lastAggTypeBindings, lastAggPieBindings, lastAggPostalBindings);
+      }, 200));
+
+      document.getElementById("btnRun").addEventListener("click", async () => {
+        setText("error", "");
+        setText("status", "Requête en cours…");
+
+        const endpoint = document.getElementById("endpoint").value.trim();
+        const graph = document.getElementById("graph").value.trim();
+
+        const typeRaw = document.getElementById("type").value;
+        const qTitle = document.getElementById("qTitle").value.trim();
+        const postalRaw = document.getElementById("postal").value;
+        const onlyWd = document.getElementById("onlyWd").value;
+        const limit = document.getElementById("limit").value;
+
+        const mode = document.getElementById("mapMode").value;
+        const dotSize = Number(document.getElementById("dotSize").value) || 8;
+
+
+        const yw = getYearWindow(); 
+        const yMin = yw.yMin;
+        const yMax = yw.yMax;
+
+        const typeList = parseMultiValues(typeRaw, 20);
+        const postalList = parseMultiValues(postalRaw, 30);
+
+        pageSize = Number(document.getElementById("pageSize").value) || 10;
+        currentPage = 1;
+        activeGlobalIndex = -1;
+
+        const qDetail = buildQuery({ yMin, yMax, typeList, qTitle, postalList, limit, onlyWd, graph });
+
+        const commonParams = { graph, yMin, yMax, typeList, qTitle, postalList };
+        const qTrend  = buildAggTrendQuery(commonParams);
+        const qType   = buildAggTypeQuery(commonParams);
+        const qPie    = buildAggPieQuery_SubSelect(commonParams);
+        const qPostal = buildAggPostalQuery(commonParams);
+
+        setText("debugQuery",
+          qDetail +
+          "\n\n# --- AGG trend (COUNT/GROUP BY) ---\n" + qTrend +
+          "\n\n# --- AGG type (COUNT/GROUP BY) ---\n" + qType +
+          "\n\n# --- AGG pie (SELECT in SELECT) ---\n" + qPie +
+          "\n\n# --- AGG postal (Spatial: COUNT/GROUP BY) ---\n" + qPostal
+        );
+
+        try {
+          const [jsonDetail, jsonTrend, jsonType, jsonPie, jsonPostal] = await Promise.all([
+            sparqlSelect(endpoint, qDetail),
+            sparqlSelect(endpoint, qTrend),
+            sparqlSelect(endpoint, qType),
+            sparqlSelect(endpoint, qPie),
+            sparqlSelect(endpoint, qPostal),
+          ]);
+
+          const bindings = jsonDetail?.results?.bindings ?? [];
+          lastBindingsForPlot = bindings;
+
+          lastAggTrendBindings  = jsonTrend?.results?.bindings ?? [];
+          lastAggTypeBindings   = jsonType?.results?.bindings ?? [];
+          lastAggPieBindings    = jsonPie?.results?.bindings ?? [];
+          lastAggPostalBindings = jsonPostal?.results?.bindings ?? [];
+
+          lastBindingsAll = bindings;
+          currentPage = 1;
+          updatePagerUI();
+          renderTablePage();
+
+          setText("status", `OK — ${bindings.length} résultat(s). (table paginée)`);
+
+          const { pts, geoPresent, geoParsed, samples } = extractPoints(bindings);
+          lastPts = pts;
+
+          renderMapBadge({
+            results: bindings.length,
+            geoPresent,
+            geoParsed,
+            points: pts.length,
+            samples,
+            graph,
+            mode
+          });
+
+          drawOnMap(pts, mode, dotSize);
+          renderPlotD3(bindings);
+
+          renderStatsD3_FromAgg(
+            lastAggTrendBindings,
+            lastAggTypeBindings,
+            lastAggPieBindings,
+            lastAggPostalBindings
+          );
+
+        } catch (e) {
+          setText("status", "");
+          setText("error", String(e?.message ?? e));
+
+          lastPts = [];
+          lastBindingsForPlot = [];
+          lastAggTrendBindings = [];
+          lastAggTypeBindings = [];
+          lastAggPieBindings = [];
+          lastAggPostalBindings = [];
+
+          lastBindingsAll = [];
+          currentPage = 1;
+          activeGlobalIndex = -1;
+          updatePagerUI();
+          renderTable([], 0);
+
+          renderMapBadge({
+            results: 0,
+            geoPresent: 0,
+            geoParsed: 0,
+            points: 0,
+            samples: [],
+            graph,
+            mode: document.getElementById("mapMode").value
+          });
+
+          clearAllLayers();
+          clearCharts();
+          hideWdPanel();
+        }
+      });
+
+      document.getElementById("btnRun").click();
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+@prefix :     <http://zqc/paris-shooting/> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# External vocabularies (LOD alignment)
+@prefix dbo:  <http://dbpedia.org/ontology/> .
+@prefix dbr:  <http://dbpedia.org/resource/> .
+@prefix wd:   <http://www.wikidata.org/entity/> .
+
+#################################################################
+# 1) CLASSES 
+#################################################################
+
+:FilmShooting a rdfs:Class ;
+  rdfs:label "Film shooting"@en ;
+  rdfs:label "Tournage"@fr ;
+  rdfs:subClassOf dbo:Film .
+
+
+# Types for blank-node structures (conceptual reconstruction)
+:Geometrie a rdfs:Class ;
+  rdfs:label "Geometry"@en ;
+  rdfs:label "Géométrie"@fr .
+
+:Localisation a rdfs:Class ;
+  rdfs:label "Location (coordinates)"@en ;
+  rdfs:label "Localisation (coordonnées)"@fr .
+
+:PeriodeTournage a rdfs:Class ;
+  rdfs:label "Shooting period"@en ;
+  rdfs:label "Période de tournage"@fr .
+
+:IdentifiantLieu a rdfs:Class ;
+  rdfs:label "Location identifier"@en ;
+  rdfs:label "Identifiant du lieu"@fr .
+
+#################################################################
+# 2) PROPERTIES (RDFS)
+#################################################################
+
+##############################
+# Links from FilmShooting to structured blank-nodes
+##############################
+
+:aGeometrie a rdf:Property ;
+  rdfs:label "has geometry"@en ;
+  rdfs:label "a pour géométrie"@fr ;
+  rdfs:domain :IdentifiantLieu ;
+  rdfs:range  :Geometrie .
+
+:aLocalisation a rdf:Property ;
+  rdfs:label "has location (coords)"@en ;
+  rdfs:label "a pour localisation (coords)"@fr ;
+  rdfs:domain :IdentifiantLieu ;
+  rdfs:range  :Localisation .
+
+:aPeriodeTournage a rdf:Property ;
+  rdfs:label "has shooting period"@en ;
+  rdfs:label "a pour période de tournage"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  :PeriodeTournage .
+
+:aIdentifiantLieu a rdf:Property ;
+  rdfs:label "has location identifier"@en ;
+  rdfs:label "a pour identifiant de lieu"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  :IdentifiantLieu .
+
+##############################
+# Core descriptive properties on FilmShooting
+##############################
+
+:Année_du_tournage a rdf:Property ;
+  rdfs:label "shooting year"@en ;
+  rdfs:label "année du tournage"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  xsd:gYear .
+
+:Titre a rdf:Property ;
+  rdfs:label "title"@en ;
+  rdfs:label "titre"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  xsd:string .
+
+:Type_de_tournage a rdf:Property ;
+  rdfs:label "shooting type"@en ;
+  rdfs:label "type de tournage"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  xsd:string .
+
+:Producteur a rdf:Property ;
+  rdfs:label "producer"@en ;
+  rdfs:label "producteur"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  xsd:string .
+
+:Réalisateur a rdf:Property ;
+  rdfs:label "director (literal)"@en ;
+  rdfs:label "réalisateur (texte)"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  xsd:string .
+
+# External links to Wikidata/DBpedia resources (LOD enrichment hooks)
+:aPourFilm a rdf:Property ;
+  rdfs:label "has film (LOD resource)"@en ;
+  rdfs:label "a pour film (ressource LOD)"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  rdfs:Resource .
+
+:aPourRealisateur a rdf:Property ;
+  rdfs:label "has director (LOD resource)"@en ;
+  rdfs:label "a pour réalisateur (ressource LOD)"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  rdfs:Resource .
+
+# Director name as literal 
+:nomRealisateur a rdf:Property ;
+  rdfs:label "director name"@en ;
+  rdfs:label "nom du réalisateur"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  xsd:string .
+
+##############################
+#  Link each shooting to a city (Paris)
+##############################
+
+:seSitueDans a rdf:Property ;
+  rdfs:label "is located in"@en ;
+  rdfs:label "se situe dans"@fr ;
+  rdfs:domain :FilmShooting ;
+  rdfs:range  rdfs:Resource ;
+  # optional hint to external city resource (RDFS-only)
+  rdfs:seeAlso dbr:Paris ;
+  rdfs:seeAlso wd:Q90 .
+
+##############################
+# Properties inside :Geometrie blank-node
+##############################
+
+:geoPoint2D a rdf:Property ;
+  rdfs:label "geo point (2D)"@en ;
+  rdfs:label "point géo (2D)"@fr ;
+  rdfs:domain :Geometrie ;
+  rdfs:range  xsd:string .
+
+:geoShape a rdf:Property ;
+  rdfs:label "geo shape (JSON)"@en ;
+  rdfs:label "forme géo (JSON)"@fr ;
+  rdfs:domain :Geometrie ;
+  rdfs:range  xsd:string .
+
+##############################
+# Properties inside :Localisation blank-node
+##############################
+
+:coordX a rdf:Property ;
+  rdfs:label "X coordinate"@en ;
+  rdfs:label "coordonnée X"@fr ;
+  rdfs:domain :Localisation ;
+  rdfs:range  xsd:double .
+
+:coordY a rdf:Property ;
+  rdfs:label "Y coordinate"@en ;
+  rdfs:label "coordonnée Y"@fr ;
+  rdfs:domain :Localisation ;
+  rdfs:range  xsd:double .
+
+##############################
+# Properties inside :PeriodeTournage blank-node
+##############################
+
+:dateDebut a rdf:Property ;
+  rdfs:label "start date"@en ;
+  rdfs:label "date de début"@fr ;
+  rdfs:domain :PeriodeTournage ;
+  rdfs:range  xsd:date .
+
+:dateFin a rdf:Property ;
+  rdfs:label "end date"@en ;
+  rdfs:label "date de fin"@fr ;
+  rdfs:domain :PeriodeTournage ;
+  rdfs:range  xsd:date .
+
+##############################
+# Properties inside :IdentifiantLieu blank-node
+##############################
+
+:codePostal a rdf:Property ;
+  rdfs:label "postal code"@en ;
+  rdfs:label "code postal"@fr ;
+  rdfs:domain :IdentifiantLieu ;
+  rdfs:range  xsd:string .
+
+:identifiantLieu a rdf:Property ;
+  rdfs:label "place identifier"@en ;
+  rdfs:label "identifiant du lieu"@fr ;
+  rdfs:domain :IdentifiantLieu ;
+  rdfs:range  xsd:string .
+
+:adresse a rdf:Property ;
+  rdfs:label "address"@en ;
+  rdfs:label "adresse"@fr ;
+  rdfs:domain :IdentifiantLieu ;
+  rdfs:range  xsd:string .
+
